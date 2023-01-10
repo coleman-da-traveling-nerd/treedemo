@@ -11,7 +11,7 @@
 
 //************************************************
 
-const std::string FORMATTING[3] = {"\\-", "| ", "  "};
+const std::string FORMATTING[3] = {"  ", "| ", "\\-"};
 
 //************************************************
 
@@ -19,13 +19,21 @@ template <class T>
 class Node {
 public:
 
-    Node(T input, Node* parentInput){
+    Node(T input, Node* parentInput, int depthIn){
         data = input;
         parent = parentInput;
+
         if (parent != nullptr) {
-            parent.SetChild(this);
+            parent->SetChild(this);
+            branchCheck = parentInput->GetBranchVector();
+            branchCheck.resize(depthIn);
+
+        }
+        else {
+            branchCheck.resize(0);
         }
         children.clear();
+        std::cout << "Size of child check: " << children.size();
         iterCheck = false;
     }
 
@@ -60,6 +68,11 @@ public:
     }
 
 //******
+    int GetDepth() {
+        return depth;
+    }
+
+//******
     void SetData(T input) {
         data = input;
     }
@@ -75,6 +88,11 @@ public:
     }
 
 //******
+    std::vector<bool> GetBranchVector() {
+        return branchCheck;
+    }
+
+//******
     void CloneNode(Node<T>* nodeCopy) {
 
         nodeCopy.SetData(data);
@@ -86,9 +104,12 @@ public:
 
 private:
     T data;
+    int depth;
+    int childPos;
     std::vector<Node<T>*> children;
     Node* parent;
     bool iterCheck;
+    std::vector<bool> branchCheck;
 };
 
 //************************************************
@@ -133,7 +154,7 @@ public:
 
 //******
     Tree(T root) {
-        head = new Node<T>(root, nullptr);
+        head = new Node<T>(root, nullptr, 0);
         curr = head;
         treeSize = 1;
     }
@@ -154,8 +175,11 @@ public:
 
 //******
     void NewNode(T input, Node<T>* parentInput) {
-        Node<T>* temp = new Node<T>(input, parentInput);
-        curr->SetChild(temp);
+        int tempInt = parentInput->GetBranchVector().size();
+//        int tempPos = parentInput->ChildCount();
+        Node<T>* temp = new Node<T>(input, parentInput, (tempInt + 1));
+//        curr->SetChild(temp);
+//        std::cout << "\n\nSize of child vector check:   " << curr->ChildCount() << "\n\n";
         treeSize++;
     }
 
@@ -175,28 +199,15 @@ public:
     }
 
 //******
-    std::vector<bool> SetContinuation() {                                   //NEED TO IMPLEMENT GETNODECOUNT FUNCTION
-        std::vector<bool> vectorOut(treeSize);
-        int temp = head.ChildCount();
-        int nodeCount = 0;
-        temp =- 1;
-        for(int iter = 0; iter < treeSize; iter++) {
-
-        }
-
-    }
-
-//******
-    int GetNodeCount(Node<T>* selection, int input); {                      //NEED TO IMPLEMENT ITER SWITCH
+    int GetNodeCount(Node<T>* selection, int input) {                      //NEED TO IMPLEMENT ITER SWITCH
         int temp = input;
-        tempVector = selection->GetVector();
+        std::vector<Node<T>*> tempVector = selection->GetVector();
         int tempSize = tempVector.size();
         if (tempSize > 0) {
             for (int iter = 0; iter < tempSize; iter++) {
                 temp = temp + GetNodeCount(tempVector[iter], temp);
             }
         }
-
     }
 
 //******
@@ -221,20 +232,22 @@ public:
     }
 
 //******
-    void DeletionTraversal(Node<T>* selection) {
+    void DeletionTraversal(Node<T>* selection, int prevSize) {
         Node<T>* temp;
         std::vector<Node<T>*> tempVector = selection->GetVector();
+        int tempSize = tempVector.size();
         if (tempVector.size() > 0) {
-            DeletionTraversal(tempVector[0]);
+            DeletionTraversal(tempVector[tempSize - 1], tempSize - 1);
         }
         else if (selection != nullptr){
-            temp = selection.GetParent();
+            tempSize = prevSize;
+            temp = selection->GetParent();
             tempVector = temp->GetVector();
-            delete tempVector[0];
-            tempVector.pop_front();
-            DeletionTraversal(temp);
+            delete tempVector[prevSize - 1];
+            tempVector.pop_back();
+            tempSize = tempVector.size();
+            DeletionTraversal(temp, tempSize);
         }
-        treeSize = 0;
     }
 
 //******
@@ -244,7 +257,11 @@ public:
         if (selection != nullptr) {
             if (!(selection->GetIterCheck())) {
                 selection->SetIterCheck(true);
-                PrintLine(selection);
+                int tempTest = selection->GetBranchVector().size();
+//                std::cout << "\n\n" << "Branch count: " << tempTest << "\n";
+                int tempTest2 = selection->GetVector().size();
+//                std::cout << "\n\n" << "Child count: " << tempTest2 << "\n";
+                PrintLine(selection->GetData(), selection->GetBranchVector());
             }
 
             if (tempVector.size() > 0) {
@@ -253,9 +270,9 @@ public:
                         PrintTraversal(tempVector[iter]);
                 }
             }
-            else {
-                PrintTraversal(selection.GetParent());
-            }
+//            else {
+//                PrintTraversal(selection.GetParent());
+//            }
         }
     }
 
@@ -263,22 +280,23 @@ public:
     void IterTraversal(Node<T>* selection) {                                    //NEED TO FIGURE OUT HOW TO DISCERN IF A NODE HAS BEEN TRAVERSED ALREADY
         Node<T>* temp;
         std::vector<Node<T>*> tempVector = selection->GetVector();
-        if (tempVector.size() > 0) {
-            IterTraversal(tempVector[0]);
-        }
-        else if (selection != nullptr) {
-            selection.SetIterCheck(false);
+        if (selection != nullptr) {
+            if (tempVector.size() > 0) {
+                for(int iter = 0; iter < tempVector.size(); iter++) {
+                    if (tempVector[iter].GetIterCheck()) {
+                        IterTraversal(tempVector[iter]);
+                    }
+                }
+            }
+        selection.SetIterCheck(false);
         }
     }
 
 //******
-    void PrintLine(T data, int nodeDepth,                                       //ERROR WITH THIS FUNCTION'S IMPLEMENTATION - PARAMETERS???
-                   std::vector<bool> prevContinuations) {
-        if (nodeDepth == 0) {
-            std::cout << data;
-        }
-        else {
-            for (int currDepth = 0; currDepth > nodeDepth; currDepth++) {
+    void PrintLine(T data, std::vector<bool> prevContinuations) {                                       //ERROR WITH THIS FUNCTION'S IMPLEMENTATION - PARAMETERS???
+        int nodeDepth = prevContinuations.size();
+        if (nodeDepth > 0) {
+            for (int currDepth = 0; currDepth < nodeDepth; currDepth++) {
                 if (prevContinuations[currDepth]) {
                     if (currDepth == nodeDepth - 1)
                         std::cout << FORMATTING[0];
@@ -289,14 +307,14 @@ public:
                     std::cout << FORMATTING[2];
             }
         }
-        std::cout << data << std::endl;
+        std::cout << data << '\n';
     }
 
 //******
     ~Tree() {
         curr = head;
         while (head != nullptr) {
-            DeletionTraversal(curr);
+            DeletionTraversal(curr, 0);
         }
     }
 
@@ -312,28 +330,45 @@ private:
 
 int main() {
 
+    std::cout << "\n\nTest 1\n\n";
     Tree<int> myTree(1);
+    std::cout << "\n\nTest 2\n\n";
     Node<int>* temp;
-
+    std::cout << "\n\nTest 3\n\n";
     temp = myTree.GetCurr();
+    std::cout << "\n\nTest 4\n\n";
     myTree.NewNode(2, temp);
+    std::cout << "\n\nTest 5\n\n";
     myTree.NewNode(3, temp);
+    std::cout << "\n\nTest 6\n\n";
 
     myTree.MoveDown(0);
+    std::cout << "\n\nTest 7\n\n";
     temp = myTree.GetCurr();
+    std::cout << "\n\nTest 8\n\n";
     myTree.NewNode(4, temp);
+    std::cout << "\n\nTest 9\n\n";
     myTree.NewNode(5, temp);
+    std::cout << "\n\nTest 10\n\n";
 
     myTree.MoveUp();
+    std::cout << "\n\nTest 11\n\n";
     myTree.MoveDown(1);
+    std::cout << "\n\nTest 12\n\n";
     temp = myTree.GetCurr();
+    std::cout << "\n\nTest 13\n\n";
     myTree.NewNode(6, temp);
+    std::cout << "\n\nTest 14\n\n";
     myTree.NewNode(7, temp);
+    std::cout << "\n\nTest 15\n\n";
 
     myTree.ResetCurr();
+    std::cout << "\n\nTest 16\n\n";
     temp = myTree.GetCurr();
+    std::cout << "\n\nTest 17\n\n";
 
     myTree.PrintTraversal(temp);
+    std::cout << "\n\nTest 18\n\n";
 
     return 0;
 }
