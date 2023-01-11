@@ -11,7 +11,7 @@
 
 //************************************************
 
-const std::string FORMATTING[3] = {"  ", "| ", "\\-"};
+const std::string FORMATTING[4] = {"  ", "| ", "\\-", "|-"};
 
 //************************************************
 
@@ -22,12 +22,10 @@ public:
     Node(T input, Node* parentInput, int depthIn){
         data = input;
         parent = parentInput;
+        depth = depthIn;
 
         if (parent != nullptr) {
             parent->SetChild(this);
-            branchCheck = parentInput->GetBranchVector();
-            branchCheck.resize(depthIn);
-
         }
         else {
             branchCheck.resize(0);
@@ -35,11 +33,13 @@ public:
         children.clear();
         std::cout << "Size of child check: " << children.size();
         iterCheck = false;
+        lastChild = -1;
     }
 
 //******
     void SetChild(Node* child) {
         children.push_back(child);
+        lastChild++;
     }
 
 //******
@@ -78,6 +78,16 @@ public:
     }
 
 //******
+    void SetLastChild(int input) {
+        lastChild = input;
+    }
+
+//******
+    int GetLastChild() {
+        return lastChild;
+    }
+
+//******
     bool GetIterCheck() {
         return iterCheck;
     }
@@ -93,6 +103,30 @@ public:
     }
 
 //******
+    void SetBranchVector(Node<T>* selection, std::vector<bool>& branch, int pos) {
+        int tempPos = pos;
+        int tempDepth = selection->GetDepth();
+        int tempPosInput;
+        int tempSize = 0;
+        if (selection->GetParent() != nullptr) {
+            tempSize = parent->ChildCount();
+            Node<T>* parent = selection->GetParent();
+            branch.resize(branch.size() + 1);
+            for (int iter = 0; iter < parent->ChildCount(); iter++) {
+                if (parent->GetChild(iter) == selection) {
+                    tempPosInput = iter;
+                }
+            }
+            SetBranchVector(parent, branch, tempPosInput);
+        }
+        if (tempPos == tempSize - 1)
+            branch[depth] = false;
+        else
+            branch[depth] = true;
+
+    }
+
+//******
     void CloneNode(Node<T>* nodeCopy) {
 
         nodeCopy.SetData(data);
@@ -105,7 +139,7 @@ public:
 private:
     T data;
     int depth;
-    int childPos;
+    int lastChild;
     std::vector<Node<T>*> children;
     Node* parent;
     bool iterCheck;
@@ -175,7 +209,7 @@ public:
 
 //******
     void NewNode(T input, Node<T>* parentInput) {
-        int tempInt = parentInput->GetBranchVector().size();
+        int tempInt = parentInput->GetDepth();
 //        int tempPos = parentInput->ChildCount();
         Node<T>* temp = new Node<T>(input, parentInput, (tempInt + 1));
 //        curr->SetChild(temp);
@@ -261,7 +295,12 @@ public:
 //                std::cout << "\n\n" << "Branch count: " << tempTest << "\n";
                 int tempTest2 = selection->GetVector().size();
 //                std::cout << "\n\n" << "Child count: " << tempTest2 << "\n";
-                PrintLine(selection->GetData(), selection->GetBranchVector());
+                std::vector<bool> tempBranch = selection->GetBranchVector();
+                int pos = 0;
+                if (selection->GetParent() != nullptr)
+                    pos = ((selection->GetParent()->ChildCount()) - 1);
+                selection->SetBranchVector(selection, tempBranch, pos);
+                PrintLine(selection, tempBranch);
             }
 
             if (tempVector.size() > 0) {
@@ -293,21 +332,24 @@ public:
     }
 
 //******
-    void PrintLine(T data, std::vector<bool> prevContinuations) {                                       //ERROR WITH THIS FUNCTION'S IMPLEMENTATION - PARAMETERS???
+    void PrintLine(Node<T>* selection, std::vector<bool> prevContinuations) {                                       //ERROR WITH THIS FUNCTION'S IMPLEMENTATION - PARAMETERS???
         int nodeDepth = prevContinuations.size();
         if (nodeDepth > 0) {
             for (int currDepth = 0; currDepth < nodeDepth; currDepth++) {
                 if (prevContinuations[currDepth]) {
                     if (currDepth == nodeDepth - 1)
-                        std::cout << FORMATTING[0];
+                        std::cout << FORMATTING[3];
                     else
                         std::cout << FORMATTING[1];
                 }
                 else
-                    std::cout << FORMATTING[2];
+                    if (currDepth == nodeDepth - 1)
+                        std::cout << FORMATTING[2];
+                    else
+                        std::cout << FORMATTING[0];
             }
         }
-        std::cout << data << '\n';
+        std::cout << selection->GetData() << '\n';
     }
 
 //******
